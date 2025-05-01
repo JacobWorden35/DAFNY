@@ -12,7 +12,8 @@ module SReverse {
    * You may not modify reverseLemma or sreverseClient in any way.
    */
   function method sreverse<T>(s : seq<T>) : seq<T>
-  // TODO: Add annotation(s)
+  ensures |sreverse(s)| == |s|
+  ensures forall i :: 0 <= i < |s| ==> sreverse(s)[i] == s[|s|-1-i]
   {
       if (|s| == 0) then s else sreverse(s[1..]) + [s[0]]
   }
@@ -52,7 +53,7 @@ module SSubReverse {
    * in any way, but you may add more annotations to subreverseLemma.
    */
   function method ssubreverse<T>(s : seq<T>, start : int, end : int) : seq<T>
-  // TODO: Add annotation(s)
+  requires 0 <= start <= end <= |s|
   {
       s[..start] + SRev.sreverse(s[start..end]) + s[end..]
   }
@@ -86,9 +87,11 @@ module SSubReverse {
    * You may add more annotations (~1) to help Dafny prove this lemma.
    */
   lemma subreverseLemma<T>(s : seq<T>, start : int, end : int)
-  // TODO: Add annotation(s)
+  requires 0 <= start <= end <= |s|
   ensures s == ssubreverse(ssubreverse(s, start, end), start, end)
-  {}
+  {
+    SRev.reverseLemma(s[start..end]);
+  }
 }
 
 module SRotate {
@@ -104,7 +107,7 @@ module SRotate {
    * in any way, but you may add more annotations to srotateLemma.
    */
   function method srotate<T>(s: seq<T>, k: int) : seq<T>
-  // TODO: Add annotation(s)
+  requires 0 <= k <= |s|
   {
       s[|s| - k..] + s[..|s| - k]
   }
@@ -133,7 +136,7 @@ module SRotate {
    * You may add more annotations (~1) to help Dafny prove this lemma.
    */
   lemma rotateLemma<T>(s: seq<T>, k: int)
-  // TODO: Add annotation(s)
+  requires 0 <= k <= |s|
   ensures s == srotate(srotate(s, k), |s| - k)
   { }
 }
@@ -157,7 +160,13 @@ module SwapSubReverse {
 
   /** Swaps the elements at the given indices in the input array. ~6 annotations needed. **/
   method swap<T>(v : array<T>, i: int, j: int)
-  // TODO: Add annotation(s)
+  requires v != null
+  requires 0 <= i < v.Length && 0 <= j < v.Length
+  modifies v
+  ensures v[i] == old(v[j])
+  ensures v[j] == old(v[i])
+  ensures forall k :: 0 <= k < v.Length && k != i && k != j ==> v[k] == old(v[k])
+  ensures v.Length == old(v.Length)
   {
       var tmp := v[i];
       v[i] := v[j];
@@ -171,13 +180,21 @@ module SwapSubReverse {
    * ~7 annotations needed.
    */
   method subreverse<T>(v : array<T>, start: int, end: int)
-  // TODO: Add annotation(s)
+  requires v != null
+  requires 0 <= start <= end <= v.Length
+  modifies v
   ensures v[..] == SSub.ssubreverse(old(v[..]), start, end)
   {
       var left := start;
       var right := end - 1;
       while (left < right)
-      // TODO: Add invariant(s)
+      invariant start <= left <= right + 1 <= end
+      invariant forall i :: 0 <= i < start ==> v[i] == old(v[i])
+      invariant forall i :: end <= i < v.Length ==> v[i] == old(v[i])
+      invariant forall i :: start <= i < left ==> v[i] == old(v[end - 1 - (i - start)])
+      invariant forall i :: right + 1 <= i < end ==> v[i] == old(v[start + (end - 1 - i)])
+      invariant v.Length == old(v.Length)
+      invariant v[left..right+1] == SRev.sreverse(old(v[left..right+1]))
       {
           swap(v, left, right);
           left := left + 1;
@@ -220,8 +237,9 @@ module Reverse {
    * to verify both reverse and reverseClient.
    */
   method reverse<T>(v : array<T>)
+  requires v != null
+  modifies v
   ensures v[..] == SRev.sreverse(old(v[..]))
-  // TODO: Add annotation(s)
   {
      SwapRev.subreverse(v, 0, v.Length);
   }
@@ -258,7 +276,9 @@ module Reverse {
    * rotate to enable Dafny to verify both rotate and rotateClient.
    */
   method rotate<T>(v: array<T>, k: int)
-  // TODO: Add annotation(s)
+  requires v != null
+  requires 0 <= k <= v.Length
+  modifies v
   ensures v[..] == SRot.srotate(old(v[..]), k)
   {
       var n := v.Length;
